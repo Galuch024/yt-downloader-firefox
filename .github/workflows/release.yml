@@ -24,9 +24,16 @@ jobs:
         run: npm version --no-git-tag-version "${GITHUB_REF_NAME#v}" --allow-same-version
       - run: npm run build
       - name: Podpisanie u Mozilli (kanal unlisted)
-        run: >
-          npx web-ext sign --source-dir dist --artifacts-dir artifacts --channel unlisted
-          --api-key "${{ secrets.AMO_JWT_ISSUER }}" --api-secret "${{ secrets.AMO_JWT_SECRET }}"
+        env:
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        run: |
+          # obciecie spacji/enterow, ktore latwo wkleic razem z kluczem
+          key="$(printf '%s' "$AMO_JWT_ISSUER" | tr -d '[:space:]')"
+          secret="$(printf '%s' "$AMO_JWT_SECRET" | tr -d '[:space:]')"
+          if [ -z "$key" ] || [ -z "$secret" ]; then echo "::error::Brak sekretow AMO_JWT_ISSUER / AMO_JWT_SECRET"; exit 1; fi
+          echo "Klucz: ${key%%:*}:… (dlugosc sekretu: ${#secret})"
+          npx web-ext sign --source-dir dist --artifacts-dir artifacts --channel unlisted             --api-key "$key" --api-secret "$secret"
       - name: Nazwa pliku
         run: |
           f=$(ls artifacts/*.xpi | head -1)
