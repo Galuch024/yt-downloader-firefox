@@ -1,0 +1,33 @@
+{
+  "manifest_version": 2,
+  "name": "YouTube Downloader (MP3/MP4)",
+  "version": "0.0.0",
+  "description": "Pobieranie MP3 i MP4 z YouTube bezpośrednio w Firefoksie, bez dodatkowych programów.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "yt-downloader@yt-downloader.local",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": { "required": ["none"] }
+    }
+  },
+  "icons": { "48": "icons/icon.svg", "96": "icons/icon.svg" },
+  "permissions": [
+    "downloads", "storage", "notifications", "contextMenus", "tabs",
+    "*://*.youtube.com/*", "*://*.googlevideo.com/*", "*://*.googleapis.com/*", "*://*.ytimg.com/*"
+  ],
+  "background": { "scripts": ["background.js"], "persistent": true },
+  "content_scripts": [{
+    "matches": ["*://www.youtube.com/*"],
+    "js": ["content.js"],
+    "css": ["content.css"],
+    "run_at": "document_idle"
+  }],
+  "web_accessible_resources": ["page.js"],
+  "browser_action": {
+    "default_popup": "popup.html",
+    "default_icon": "icons/icon.svg",
+    "default_title": "YouTube Downloader"
+  },
+  "options_ui": { "page": "options.html", "open_in_tab": false },
+  "content_security_policy": "script-src 'self' 'wasm-unsafe-eval' blob:; object-src 'self'; worker-src 'self' blob:"
+}

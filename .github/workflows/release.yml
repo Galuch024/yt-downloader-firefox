@@ -1,0 +1,37 @@
+name: Release (podpisany .xpi)
+
+# Uruchamia sie po wypchnieciu tagu, np.: git tag v0.1.0 && git push origin v0.1.0
+# Wymaga sekretow repozytorium AMO_JWT_ISSUER i AMO_JWT_SECRET
+# (klucze API z https://addons.mozilla.org/developers/addon/api/key/).
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  sign:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Wersja z tagu
+        run: npm version --no-git-tag-version "${GITHUB_REF_NAME#v}" --allow-same-version
+      - run: npm run build
+      - name: Podpisanie u Mozilli (kanal unlisted)
+        run: >
+          npx web-ext sign --source-dir dist --artifacts-dir artifacts --channel unlisted
+          --api-key "${{ secrets.AMO_JWT_ISSUER }}" --api-secret "${{ secrets.AMO_JWT_SECRET }}"
+      - name: Nazwa pliku
+        run: |
+          f=$(ls artifacts/*.xpi | head -1)
+          mv "$f" "artifacts/yt-downloader-${GITHUB_REF_NAME}.xpi"
+      - name: Wydanie na GitHubie
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" artifacts/*.xpi --title "$GITHUB_REF_NAME" --notes "Podpisany plik .xpi - otworz go w Firefoksie, aby zainstalowac."

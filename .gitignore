@@ -1,0 +1,12 @@
+node_modules/
+dist/
+artifacts/
+*.log
+.web-extension-id
+.amo-upload-uuid
+.env
+# prototyp: zbudowane paczki i dane z testow (zawieraja adresy strumieni)
+spike/node_modules/
+spike/out/
+spike/results/
+spike/ext/*.js

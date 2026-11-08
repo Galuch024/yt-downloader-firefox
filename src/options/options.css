@@ -1,0 +1,10 @@
+:root { --text: #0f0f0f; --muted: #606060; --line: rgba(0,0,0,.15); --bg: transparent; --input: #fff; }
+@media (prefers-color-scheme: dark) { :root { --text: #f1f1f1; --muted: #aaa; --line: rgba(255,255,255,.18); --input: #1f1f1f; } }
+body { margin: 0; padding: 16px; color: var(--text); background: var(--bg); font: 14px/1.4 Roboto, "Segoe UI", Arial, sans-serif; }
+form { display: grid; gap: 16px; max-width: 460px; }
+label { display: grid; gap: 6px; }
+label > span { font-weight: 500; }
+label.check { display: flex; align-items: center; gap: 8px; }
+input[type="text"], select { height: 34px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--input); color: var(--text); font: inherit; }
+small { color: var(--muted); }
+.saved { color: var(--muted); font-size: 12px; min-height: 1em; margin: 0; }

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <title>YouTube Downloader</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header class="top">
+    <img src="icons/icon.svg" alt="" width="22" height="22">
+    <h1>YouTube Downloader</h1>
+    <button id="open-options" class="icon-btn" title="Ustawienia" aria-label="Ustawienia">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1l-.4-2.6h-4l-.4 2.6c-.6.3-1.2.6-1.7 1l-2.5-1-2 3.5L4.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1c.5.4 1.1.7 1.7 1l.4 2.6h4l.4-2.6c.6-.3 1.2-.6 1.7-1l2.5 1 2-3.5zM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"/></svg>
+    </button>
+  </header>
+
+  <section id="current" class="card" hidden>
+    <div class="video">
+      <img id="thumb" alt="" width="96" height="54">
+      <div class="meta">
+        <div id="v-title" class="v-title"></div>
+        <div id="v-author" class="v-author"></div>
+      </div>
+    </div>
+    <div id="current-status" class="status"></div>
+    <div id="actions" class="actions" hidden>
+      <button id="dl-mp3" class="btn primary">MP3</button>
+      <div class="split">
+        <select id="quality" aria-label="Jakość MP4"></select>
+        <button id="dl-mp4" class="btn primary">MP4</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="by-url" class="card">
+    <label for="url" class="label">Adres filmu YouTube</label>
+    <div class="row">
+      <input id="url" type="url" placeholder="https://www.youtube.com/watch?v=…" spellcheck="false">
+    </div>
+    <div class="row">
+      <select id="url-format" aria-label="Format">
+        <option value="mp3">MP3</option>
+        <option value="mp4-1080">MP4 1080p</option>
+        <option value="mp4-720">MP4 720p</option>
+        <option value="mp4-480">MP4 480p</option>
+        <option value="mp4-360">MP4 360p</option>
+      </select>
+      <button id="dl-url" class="btn">Pobierz</button>
+    </div>
+    <div id="url-status" class="status"></div>
+  </section>
+
+  <section class="jobs-section">
+    <div class="jobs-head">
+      <h2>Pobrania</h2>
+      <button id="clear" class="link-btn">Wyczyść zakończone</button>
+    </div>
+    <ul id="jobs" class="jobs"></ul>
+    <p id="empty" class="empty">Brak pobrań. Kliknij ikonę pobierania w odtwarzaczu YouTube.</p>
+  </section>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+{
+  "name": "yt-downloader-firefox",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Wtyczka Firefox do pobierania MP3 i MP4 z YouTube, bez dodatkowych programów",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:dev": "node scripts/build.mjs --dev",
+    "start": "node scripts/build.mjs --dev && web-ext run --source-dir dist",
+    "lint": "web-ext lint --source-dir dist",
+    "package": "node scripts/build.mjs && web-ext build --source-dir dist --artifacts-dir artifacts --filename \"yt-downloader-{version}-unsigned.xpi\" --overwrite-dest",
+    "sign": "node scripts/build.mjs && web-ext sign --source-dir dist --artifacts-dir artifacts --channel unlisted --api-key $AMO_JWT_ISSUER --api-secret $AMO_JWT_SECRET"
+  },
+  "dependencies": {
+    "@mediabunny/mp3-encoder": "^1.65.2",
+    "bgutils-js": "^4.0.3",
+    "mediabunny": "^1.65.2",
+    "youtubei.js": "^18.3.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "web-ext": "^10.8.0"
+  }
+}
