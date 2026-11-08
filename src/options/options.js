@@ -28,7 +28,7 @@ async function save() {
     concurrency: Number($('concurrency').value),
   };
   await browser.storage.local.set({ settings });
-  $('saved').textContent = 'Zapisano';
+  $('saved').textContent = 'Saved';
   clearTimeout(timer);
   timer = setTimeout(() => { $('saved').textContent = ''; }, 1500);
 }

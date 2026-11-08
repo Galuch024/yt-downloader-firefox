@@ -77,7 +77,7 @@ export class PlayerButton {
   buildButton() {
     const b = el('button', 'ytp-button ytdl-btn');
     b.type = 'button';
-    b.setAttribute('aria-label', 'Pobierz');
+    b.setAttribute('aria-label', 'Download');
     b.setAttribute('aria-haspopup', 'true');
     b.setAttribute('aria-expanded', 'false');
     b.dataset.priority = '6';
@@ -120,9 +120,9 @@ export class PlayerButton {
       const pct = Math.round((j.progress || 0) * 100);
       return `${j.label}: ${j.stage}${j.state === 'downloading' ? ` ${pct}%` : ''}`;
     }
-    if (j?.state === 'error' && this.flashTimer) return `Błąd: ${j.error}`;
-    if (j?.state === 'done' && this.flashTimer) return `Pobrano ${j.label}`;
-    return 'Pobierz (MP3 / MP4)';
+    if (j?.state === 'error' && this.flashTimer) return `Error: ${j.error}`;
+    if (j?.state === 'done' && this.flashTimer) return `Downloaded ${j.label}`;
+    return 'Download (MP3 / MP4)';
   }
 
   showTooltip() {
@@ -237,18 +237,18 @@ export class PlayerButton {
   }
 
   renderLoading() {
-    this.menu.replaceChildren(this.header('Pobierz'), Object.assign(el('div', 'ytdl-menu-loading'), {}));
+    this.menu.replaceChildren(this.header('Download'), Object.assign(el('div', 'ytdl-menu-loading'), {}));
     const box = this.menu.lastChild;
-    box.append(el('span', 'ytdl-spinner'), el('span', null, 'Sprawdzam dostępne formaty…'));
+    box.append(el('span', 'ytdl-spinner'), el('span', null, 'Checking available formats…'));
   }
 
   renderError(e) {
     const box = el('div', 'ytdl-menu-error');
     box.append(svg('0 0 24 24', [[ICON_ERROR]], 'ytdl-error-icon'), el('div', 'ytdl-error-text', errorText(e)));
-    const retry = el('button', 'ytdl-menu-item ytdl-retry', 'Spróbuj ponownie');
+    const retry = el('button', 'ytdl-menu-item ytdl-retry', 'Try again');
     retry.type = 'button';
     retry.addEventListener('click', () => { this.deps.invalidate?.(this.menuVideoId); this.openMenu(); });
-    this.menu.replaceChildren(this.header('Pobierz'), box, retry);
+    this.menu.replaceChildren(this.header('Download'), box, retry);
   }
 
   item(iconPath, label, secondary, badge, onClick) {
@@ -269,7 +269,7 @@ export class PlayerButton {
 
   renderOptions(info, settings) {
     const dur = info.duration ? fmtDuration(info.duration) : null;
-    const nodes = [this.header('Pobierz', dur)];
+    const nodes = [this.header('Download', dur)];
 
     nodes.push(el('div', 'ytdl-menu-section', 'Audio'));
     const audio = info.audios.find((a) => a.mime.includes('mp4a')) || info.audios[0];
@@ -277,8 +277,8 @@ export class PlayerButton {
       () => this.deps.onChoose('mp3', null)));
 
     const qualities = videoQualities(info);
-    nodes.push(el('div', 'ytdl-menu-section', 'Wideo MP4'));
-    if (!qualities.length) nodes.push(el('div', 'ytdl-menu-empty', 'Brak strumieni H.264 dla tego filmu'));
+    nodes.push(el('div', 'ytdl-menu-section', 'Video MP4'));
+    if (!qualities.length) nodes.push(el('div', 'ytdl-menu-empty', 'No H.264 streams for this video'));
     for (const q of qualities) {
       const v = info.videos.find((x) => String(x.height) === q.quality);
       const size = v && audio ? formatBytes((v.size || 0) + (audio.size || 0)) : null;
@@ -336,8 +336,8 @@ function fmtDuration(s) {
 
 export function errorText(e) {
   const code = e?.code;
-  if (code === 'LOGIN_REQUIRED') return 'Ten film wymaga zalogowania (np. ograniczenie wiekowe).';
-  if (code === 'LIVE') return 'Transmisji na żywo nie można pobrać.';
-  if (code === 'BLOCKED') return 'YouTube zablokował pobieranie. Spróbuj odświeżyć stronę.';
+  if (code === 'LOGIN_REQUIRED') return 'This video requires signing in (e.g. age restriction).';
+  if (code === 'LIVE') return 'Live streams cannot be downloaded.';
+  if (code === 'BLOCKED') return 'YouTube blocked the download. Try refreshing the page.';
   return e?.message || String(e);
 }

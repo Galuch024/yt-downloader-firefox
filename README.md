@@ -7,7 +7,7 @@ stream muxing and MP3 encoding (Mediabunny + LAME compiled to WASM) all run insi
 ## How to download
 
 - **Regular video**: the ⬇ button in the player bar, next to the settings gear → pick MP3 or an MP4 quality.
-- **Shorts**: the ⋮ menu in the top-right corner of the player → **Pobierz (MP3 / MP4)**.
+- **Shorts**: the ⋮ menu in the top-right corner of the player → **Download (MP3 / MP4)**.
 - **Extension popup**: the current video, a field to paste any link, and the download list with progress.
 - **Context menu** on a video link or a video page.
 

@@ -24,7 +24,7 @@ async function waitForContent(tabId, timeoutMs = 30000) {
     if (await ping(tabId)) return;
     await new Promise((r) => setTimeout(r, 500));
   }
-  throw new Error('Nie udalo sie uruchomic karty YouTube do pobierania');
+  throw new Error('Could not start a YouTube tab for downloading');
 }
 
 /** Karty otwarte automatycznie jako "silnik" - zamykane po zakonczeniu zadan. */
@@ -54,7 +54,7 @@ export function releaseEngineTab(tabId) {
 export async function extractOnTab(tabId, videoId) {
   const r = await browser.tabs.sendMessage(tabId, { type: 'extract', videoId });
   if (!r?.ok) {
-    const e = new Error(r?.error?.message || 'Ekstrakcja nie powiodla sie');
+    const e = new Error(r?.error?.message || 'Extraction failed');
     e.code = r?.error?.code;
     throw e;
   }

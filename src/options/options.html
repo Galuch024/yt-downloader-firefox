@@ -1,32 +1,32 @@
 <!doctype html>
-<html lang="pl">
+<html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Ustawienia – YouTube Downloader</title>
+  <title>Settings – YouTube Downloader</title>
   <link rel="stylesheet" href="options.css">
 </head>
 <body>
   <form id="form">
     <label>
-      <span>Podfolder w „Pobranych”</span>
-      <input id="subfolder" type="text" placeholder="(bez podfolderu)" maxlength="60">
-      <small>Pliki trafią do Pobrane/<em id="folder-preview">YouTube</em>/</small>
+      <span>Subfolder in Downloads</span>
+      <input id="subfolder" type="text" placeholder="(no subfolder)" maxlength="60">
+      <small>Files will be saved to Downloads/<em id="folder-preview">YouTube</em>/</small>
     </label>
     <label class="check">
       <input id="saveAs" type="checkbox">
-      <span>Pytaj, gdzie zapisać każdy plik</span>
+      <span>Ask where to save each file</span>
     </label>
     <label>
-      <span>Jakość MP3</span>
+      <span>MP3 quality</span>
       <select id="mp3Bitrate">
-        <option value="320">320 kb/s (najwyższa)</option>
+        <option value="320">320 kb/s (highest)</option>
         <option value="256">256 kb/s</option>
-        <option value="192">192 kb/s (zalecana)</option>
-        <option value="128">128 kb/s (mniejszy plik)</option>
+        <option value="192">192 kb/s (recommended)</option>
+        <option value="128">128 kb/s (smaller file)</option>
       </select>
     </label>
     <label>
-      <span>Domyślna jakość MP4 w okienku wtyczki</span>
+      <span>Default MP4 quality in the extension popup</span>
       <select id="defaultQuality">
         <option value="1080">1080p</option>
         <option value="720">720p</option>
@@ -35,7 +35,7 @@
       </select>
     </label>
     <label>
-      <span>Ile pobrań jednocześnie</span>
+      <span>Simultaneous downloads</span>
       <select id="concurrency">
         <option value="1">1</option>
         <option value="2">2</option>

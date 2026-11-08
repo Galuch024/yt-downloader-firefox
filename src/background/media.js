@@ -15,7 +15,7 @@ async function copyTrack(track, source, signal, onPacket) {
   const config = await track.getDecoderConfig();
   let first = true;
   for await (const packet of new EncodedPacketSink(track).packets()) {
-    if (signal?.aborted) throw new DOMException('Anulowano', 'AbortError');
+    if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError');
     await source.add(packet, first ? { decoderConfig: config } : undefined);
     first = false;
     onPacket?.(packet);
@@ -28,7 +28,7 @@ export async function muxMp4(videoBlob, audioBlob, { tags = {}, signal, onProgre
   const aIn = new Input({ source: new BlobSource(audioBlob), formats: ALL_FORMATS });
   const vt = await vIn.getPrimaryVideoTrack();
   const at = await aIn.getPrimaryAudioTrack();
-  if (!vt || !at) throw new Error('Brak sciezki wideo lub audio w pobranych danych');
+  if (!vt || !at) throw new Error('The downloaded data has no video or audio track');
   const duration = (await vt.computeDuration?.()) || 0;
 
   const target = new BufferTarget();
@@ -58,7 +58,7 @@ export async function toMp3(audioBlob, { bitrate = 192, tags = {}, signal, onPro
     audio: { codec: 'mp3', bitrate: bitrate * 1000 },
     tags: () => tags,
   });
-  if (!conversion.isValid) throw new Error('Nie mozna przekonwertowac audio do MP3');
+  if (!conversion.isValid) throw new Error('Could not convert the audio to MP3');
   if (onProgress) conversion.onProgress = onProgress;
   const onAbort = () => conversion.cancel?.();
   signal?.addEventListener('abort', onAbort, { once: true });
@@ -67,7 +67,7 @@ export async function toMp3(audioBlob, { bitrate = 192, tags = {}, signal, onPro
   } finally {
     signal?.removeEventListener('abort', onAbort);
   }
-  if (signal?.aborted) throw new DOMException('Anulowano', 'AbortError');
+  if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError');
   return new Blob([target.buffer], { type: 'audio/mpeg' });
 }
 

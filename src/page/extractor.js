@@ -88,7 +88,7 @@ async function probe(url, size) {
 async function extractWith(videoId, withCookies) {
   const { yt, minter } = await getSession(withCookies);
   const contentPot = await minter.mintAsWebsafeString(videoId);
-  let lastError = new ExtractError('UNKNOWN', 'Nie udalo sie pobrac informacji o filmie');
+  let lastError = new ExtractError('UNKNOWN', 'Could not get video information');
 
   for (const client of CLIENTS) {
     let info;
@@ -101,12 +101,12 @@ async function extractWith(videoId, withCookies) {
       lastError = new ExtractError(code, ps?.reason || `Film niedostepny (${ps?.status})`);
       continue;
     }
-    if (info.basic_info.is_live) throw new ExtractError('LIVE', 'Transmisji na zywo nie mozna pobrac');
+    if (info.basic_info.is_live) throw new ExtractError('LIVE', 'Live streams cannot be downloaded');
 
     const sd = info.streaming_data;
     const adaptive = sd?.adaptive_formats ?? [];
     if (!adaptive.some((f) => f.url || f.signature_cipher || f.cipher)) {
-      lastError = new ExtractError('NO_URLS', `Klient ${client} nie zwrocil adresow strumieni`);
+      lastError = new ExtractError('NO_URLS', `Client ${client} returned no stream URLs`);
       continue;
     }
 
@@ -140,7 +140,7 @@ async function extractWith(videoId, withCookies) {
     const check = videos[0] || audios[0];
     if (check) {
       const st = await probe(check.url, check.size);
-      if (st !== 200 && st !== 206) { lastError = new ExtractError('BLOCKED', `Serwer odrzucil strumien (HTTP ${st}) dla klienta ${client}`); continue; }
+      if (st !== 200 && st !== 206) { lastError = new ExtractError('BLOCKED', `Server rejected the stream (HTTP ${st}) for client ${client}`); continue; }
     }
 
     return {

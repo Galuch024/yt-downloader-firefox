@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "YouTube Downloader (MP3/MP4)",
   "version": "0.0.0",
-  "description": "Pobieranie MP3 i MP4 z YouTube bezpośrednio w Firefoksie, bez dodatkowych programów.",
+  "description": "Download MP3 and MP4 from YouTube right in Firefox, no extra programs needed.",
   "browser_specific_settings": {
     "gecko": {
       "id": "yt-downloader@yt-downloader.local",

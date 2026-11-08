@@ -44,7 +44,7 @@ export function pickFormats(info, mode, quality) {
   const audioMp4 = info.audios.filter((a) => a.mime.includes('mp4a')).sort((a, b) => b.bitrate - a.bitrate)[0];
   const audioAny = audioMp4 || [...info.audios].sort((a, b) => b.bitrate - a.bitrate)[0];
   if (mode === 'mp3') {
-    if (!audioAny) throw new Error('Brak sciezki audio dla tego filmu');
+    if (!audioAny) throw new Error('No audio track for this video');
     return { audio: audioAny };
   }
   const want = Number(quality) || 1080;
@@ -52,8 +52,8 @@ export function pickFormats(info, mode, quality) {
   const video = candidates[0] || [...info.videos].sort((a, b) => a.height - b.height)[0];
   const muxed = info.muxed?.find((m) => m.height <= want);
   if (muxed && (!video || video.height <= muxed.height)) return { muxed };
-  if (!video) throw new Error('Brak strumienia wideo H.264 dla tego filmu');
-  if (!audioAny) throw new Error('Brak sciezki audio dla tego filmu');
+  if (!video) throw new Error('No H.264 video stream for this video');
+  if (!audioAny) throw new Error('No audio track for this video');
   return { video, audio: audioAny };
 }
 

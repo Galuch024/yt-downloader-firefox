@@ -30,15 +30,15 @@ window.addEventListener('message', (ev) => {
 });
 
 async function extractRaw(videoId) {
-  await Promise.race([pageReady, sleep(15000).then(() => { throw new Error('Ekstraktor nie wystartowal - odswiez strone'); })]);
+  await Promise.race([pageReady, sleep(15000).then(() => { throw new Error('The extractor did not start - refresh the page'); })]);
   const reqId = crypto.randomUUID();
   const reply = await new Promise((resolve, reject) => {
-    const t = setTimeout(() => { pending.delete(reqId); reject(new Error('Przekroczono czas oczekiwania na informacje o filmie')); }, 90_000);
+    const t = setTimeout(() => { pending.delete(reqId); reject(new Error('Timed out waiting for video information')); }, 90_000);
     pending.set(reqId, (m) => { clearTimeout(t); resolve(m); });
     window.postMessage(JSON.stringify({ source: 'ytdl-cs', channel: CHANNEL, type: 'extract', reqId, videoId }), '*');
   });
   if (!reply.ok) {
-    const e = new Error(reply.error?.message || 'Ekstrakcja nie powiodla sie');
+    const e = new Error(reply.error?.message || 'Extraction failed');
     e.code = reply.error?.code;
     throw e;
   }
@@ -69,19 +69,19 @@ const button = new PlayerButton({
     const videoId = currentVideoId();
     if (!videoId) return;
     const label = mode === 'mp3' ? 'MP3' : `MP4 ${quality}p`;
-    button.onJob({ videoId, state: 'queued', stage: 'Przygotowanie', progress: 0, label });
+    button.onJob({ videoId, state: 'queued', stage: 'Preparing', progress: 0, label });
     const info = await loadInfo(videoId);
     const r = await browser.runtime.sendMessage({ type: 'enqueue', info, mode, quality });
-    if (!r?.ok) throw new Error(r?.error || 'Nie udalo sie dodac pobierania');
+    if (!r?.ok) throw new Error(r?.error || 'Could not add the download');
     button.onJob(r.job);
-    if (isShortsPage()) toast(`Pobieranie ${label} rozpoczęte`);
+    if (isShortsPage()) toast(`Download started: ${label}`);
     return r.job;
   },
   // na Shorts nie ma przycisku z pierscieniem postepu - informujemy toastem
   onFlash: (job) => {
     if (!isShortsPage()) return;
-    if (job.state === 'done') toast(`Pobrano ${job.label || ''}`.trim());
-    else if (job.state === 'error') toast(`Błąd pobierania: ${job.error}`, 'error');
+    if (job.state === 'done') toast(`Downloaded ${job.label || ''}`.trim());
+    else if (job.state === 'error') toast(`Download failed: ${job.error}`, 'error');
   },
 });
 
@@ -92,9 +92,9 @@ const shorts = new ShortsMenu({
     const j = button.job;
     if (j && ACTIVE.includes(j.state)) {
       const pct = j.state === 'downloading' ? ` ${Math.round((j.progress || 0) * 100)}%` : '';
-      return { title: 'Pobierz (MP3 / MP4)', secondary: `${j.stage}${pct}` };
+      return { title: 'Download (MP3 / MP4)', secondary: `${j.stage}${pct}` };
     }
-    return { title: 'Pobierz (MP3 / MP4)' };
+    return { title: 'Download (MP3 / MP4)' };
   },
   onActivate: (anchor) => button.openMenu({ anchor, placement: 'below', fallbackRect: shortsPlayerRect }),
 });

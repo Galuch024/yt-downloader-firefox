@@ -11,7 +11,7 @@ async function probeSize(url, signal) {
   const r = await fetch(`${url}&range=0-0`, { credentials: 'omit', signal });
   await r.arrayBuffer();
   const total = Number(r.headers.get('content-range')?.split('/')[1]);
-  if (!r.ok || !total) throw new HttpError(r.status, `Nie mozna ustalic rozmiaru strumienia (HTTP ${r.status})`);
+  if (!r.ok || !total) throw new HttpError(r.status, `Could not determine the stream size (HTTP ${r.status})`);
   return total;
 }
 
@@ -32,13 +32,13 @@ export async function downloadStream(format, { signal, onBytes, refreshUrl } = {
   async function fetchRange(i) {
     const [a, b] = ranges[i];
     for (let attempt = 1; ; attempt++) {
-      if (signal?.aborted) throw new DOMException('Anulowano', 'AbortError');
+      if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError');
       let r;
       try {
         r = await fetch(`${url}&range=${a}-${b}`, { credentials: 'omit', signal });
       } catch (e) {
         if (e.name === 'AbortError') throw e;
-        if (attempt >= RETRIES) throw new Error(`Blad sieci przy pobieraniu: ${e.message}`);
+        if (attempt >= RETRIES) throw new Error(`Network error while downloading: ${e.message}`);
         await sleep(800 * attempt);
         continue;
       }
@@ -53,10 +53,10 @@ export async function downloadStream(format, { signal, onBytes, refreshUrl } = {
       if (r.status === 403 && refreshUrl) {
         refreshed ??= refreshUrl().then((u) => { url = u; });
         await refreshed;
-        if (attempt >= RETRIES + 1) throw new HttpError(403, 'Serwer YouTube odmowil dostepu (HTTP 403)');
+        if (attempt >= RETRIES + 1) throw new HttpError(403, 'YouTube server refused access (HTTP 403)');
         continue;
       }
-      if (attempt >= RETRIES) throw new HttpError(r.status, `Serwer YouTube zwrocil blad HTTP ${r.status}`);
+      if (attempt >= RETRIES) throw new HttpError(r.status, `YouTube server returned HTTP ${r.status}`);
       await sleep(800 * attempt);
     }
   }

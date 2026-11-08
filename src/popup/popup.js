@@ -25,13 +25,13 @@ function jobRow(j) {
   const info = document.createElement('div');
   info.className = 'job-info';
   const left = document.createElement('span');
-  if (j.state === 'error') { left.className = 'err'; left.textContent = j.error || 'Błąd'; }
-  else if (j.state === 'downloading') left.textContent = `Pobieranie ${Math.round(j.progress * 100)}% · ${formatBytes(j.bytes || 0)} / ${formatBytes(j.totalBytes || 0)}`;
+  if (j.state === 'error') { left.className = 'err'; left.textContent = j.error || 'Error'; }
+  else if (j.state === 'downloading') left.textContent = `Downloading ${Math.round(j.progress * 100)}% · ${formatBytes(j.bytes || 0)} / ${formatBytes(j.totalBytes || 0)}`;
   else left.textContent = j.stage || j.state;
   const actions = document.createElement('span');
   actions.className = 'job-actions';
-  if (ACTIVE.includes(j.state)) actions.append(linkBtn('Anuluj', () => browser.runtime.sendMessage({ type: 'cancel', id: j.id })));
-  if (j.state === 'done') actions.append(linkBtn('Pokaż w folderze', () => browser.runtime.sendMessage({ type: 'show-download', id: j.id })));
+  if (ACTIVE.includes(j.state)) actions.append(linkBtn('Cancel', () => browser.runtime.sendMessage({ type: 'cancel', id: j.id })));
+  if (j.state === 'done') actions.append(linkBtn('Show in folder', () => browser.runtime.sendMessage({ type: 'show-download', id: j.id })));
   info.append(left, actions);
   li.append(top, info);
 
@@ -77,12 +77,12 @@ async function initCurrent() {
   $('thumb').src = `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
   $('v-title').textContent = tab.title?.replace(/ - YouTube$/, '') || videoId;
   const status = $('current-status');
-  status.textContent = 'Sprawdzam dostępne formaty…';
+  status.textContent = 'Checking available formats…';
 
   let r;
   try { r = await browser.tabs.sendMessage(tab.id, { type: 'extract', videoId }); }
-  catch { status.textContent = 'Odśwież kartę YouTube, aby wtyczka mogła działać.'; status.classList.add('error'); return; }
-  if (!r?.ok) { status.textContent = r?.error?.message || 'Nie udało się pobrać informacji o filmie.'; status.classList.add('error'); return; }
+  catch { status.textContent = 'Refresh the YouTube tab so the extension can work.'; status.classList.add('error'); return; }
+  if (!r?.ok) { status.textContent = r?.error?.message || 'Could not get video information.'; status.classList.add('error'); return; }
 
   const info = r.result;
   $('v-title').textContent = info.title;
@@ -100,7 +100,7 @@ async function initCurrent() {
   const go = async (mode, quality) => {
     const res = await browser.runtime.sendMessage({ type: 'enqueue', info, mode, quality, tabId: tab.id });
     status.classList.toggle('error', !res?.ok);
-    status.textContent = res?.ok ? `Dodano: ${res.job.label}` : res?.error || 'Błąd';
+    status.textContent = res?.ok ? `Added: ${res.job.label}` : res?.error || 'Error';
   };
   $('dl-mp3').addEventListener('click', () => go('mp3', null));
   $('dl-mp4').addEventListener('click', () => go('mp4', sel.value));
@@ -113,12 +113,12 @@ $('dl-url').addEventListener('click', async () => {
   const url = $('url').value.trim();
   const [mode, quality] = $('url-format').value === 'mp3' ? ['mp3', null] : ['mp4', $('url-format').value.split('-')[1]];
   status.classList.remove('error');
-  status.textContent = 'Przygotowuję…';
+  status.textContent = 'Preparing…';
   $('dl-url').disabled = true;
   try {
     const res = await browser.runtime.sendMessage({ type: 'enqueue-url', url, mode, quality });
     status.classList.toggle('error', !res?.ok);
-    status.textContent = res?.ok ? `Dodano: ${res.job.title} (${res.job.label})` : res?.error || 'Błąd';
+    status.textContent = res?.ok ? `Added: ${res.job.title} (${res.job.label})` : res?.error || 'Error';
   } finally {
     $('dl-url').disabled = false;
   }
