@@ -277,19 +277,6 @@ browser.runtime.onMessage.addListener((msg, sender) => {
       for (const [id, j] of jobs) if (['done', 'error', 'cancelled'].includes(j.state)) jobs.delete(id);
       persistHistory();
       return Promise.resolve({ ok: true });
-    case 'autotest-capture':
-      if (__DEV__) {
-        return browser.tabs.update(sender.tab.id, { active: true })
-          .then(() => new Promise((r) => setTimeout(r, 400)))
-          .then(() => browser.tabs.captureVisibleTab(sender.tab.windowId, { format: 'png' }))
-          .then((dataUrl) => fetch(dataUrl).then((r) => r.blob()))
-          .then((blob) => saveBlob(blob, `ytdl-autotest/${msg.name}.png`, false))
-          .then(() => ({ ok: true }), (e) => ({ ok: false, error: String(e) }));
-      }
-      return undefined;
-    case 'autotest-report':
-      if (__DEV__) return saveBlob(new Blob([JSON.stringify(msg.report, null, 2)], { type: 'application/json' }), `ytdl-autotest/${msg.name}.json`, false).then(() => ({ ok: true }));
-      return undefined;
     default:
       return undefined;
   }
@@ -311,12 +298,3 @@ browser.tabs.onRemoved.addListener((tabId) => {
 createMenus();
 loadHistory();
 clearTempFiles(); // resztki po zadaniach przerwanych zamknieciem przegladarki
-
-if (__DEV__) {
-  fetch(browser.runtime.getURL('autotest.json')).then((r) => (r.ok ? r.json() : null)).then(async (urls) => {
-    if (!urls?.length) return;
-    // odrzucenie niepotrzebnych ciasteczek (SOCS=CAI), zeby baner zgod nie zaslanial odtwarzacza w czystym profilu
-    await browser.cookies.set({ url: 'https://www.youtube.com', domain: '.youtube.com', name: 'SOCS', value: 'CAI', secure: true, expirationDate: Date.now() / 1000 + 86400 * 30 }).catch(() => {});
-    for (const url of urls) await browser.tabs.create({ url, active: true });
-  }).catch(() => {});
-}

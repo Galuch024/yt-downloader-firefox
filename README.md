@@ -1,105 +1,129 @@
-# YouTube Downloader (MP3/MP4) for Firefox
+# YouTube Downloader for Firefox
 
-A Firefox extension that downloads audio (MP3, M4A, Opus or WAV, with cover art and tags) and video (MP4 up to 1080p in H.264,
-and 1440p / 4K / 8K in VP9 or AV1) from YouTube.
-It is fully self-contained — no yt-dlp, ffmpeg or any other program is needed: extraction (youtubei.js + BotGuard/PO token),
-stream muxing and MP3 encoding (Mediabunny + LAME compiled to WASM) all run inside the browser.
+Download YouTube videos and music straight from the player – no yt-dlp, ffmpeg or any other program to install.
+Everything (finding the streams, merging video with audio, converting to MP3) happens inside Firefox.
 
-## How to download
-
-- **Regular video**: the ⬇ button in the player bar, next to the settings gear → pick an audio format or an MP4 quality.
-- **Shorts**: the ⋮ menu in the top-right corner of the player → **Download (MP3 / MP4)**.
-- **Extension popup**: the current video, a field to paste any link, and the download list with progress.
-- **Context menu** on a video link or a video page.
-
-Files are saved to your downloads folder, by default in a `YouTube` subfolder (configurable in the extension settings).
-
-## Audio formats
-
-| Format | What you get | Best for |
-|---|---|---|
-| **MP3** | Re-encoded at 128–320 kb/s (setting, default 192 kb/s) | Plays on anything, including old car stereos and MP3 players. |
-| **M4A** | YouTube's original AAC audio (~128 kb/s), copied without re-encoding | Same quality as on YouTube, plays everywhere (phones, iTunes, Windows). |
-| **Opus** | YouTube's original Opus audio (~130–160 kb/s), copied without re-encoding | The best sound YouTube offers, smallest file. Plays in browsers, VLC, Android, foobar2000. |
-| **WAV** | Uncompressed 16-bit PCM decoded from the best source | Audio/video editors and DAWs that don't read lossy formats. Large (~10 MB per minute). |
-
-All audio files get the title, the channel name as artist, and the video thumbnail as square cover art.
-WAV cannot add quality that the source does not have – it is only uncompressed for compatibility.
-
-## Video quality
-
-| Quality | Video codec | Notes |
-|---|---|---|
-| 144p – 1080p | H.264 + AAC | Plays everywhere: Windows, phones, TVs, video editors. |
-| 1440p, 4K, 8K (*Higher quality MP4*) | VP9 or AV1 + AAC | YouTube does not provide H.264 above 1080p. |
-
-- Streams are never re-encoded: video and audio are copied as-is into one MP4 file, so there is no quality loss.
-- Above 1080p the extension prefers VP9 (better player support, lighter to decode) and uses AV1 only when VP9 is
-  missing (e.g. 8K) or has fewer frames per second. HDR versions are skipped – the SDR version is downloaded.
-- VP9/AV1 files play in Firefox, Chrome, VLC, mpv and most recent phones and TVs. On Windows the built-in player may
-  need the free *VP9 Video Extensions* / *AV1 Video Extension* from the Microsoft Store. Older devices and some video
-  editors may not open them.
-- Shorts and other vertical videos are labelled by the shorter side of the frame (a 1080×1920 Short is 1080p).
-- The original audio track is preferred over dubbed or auto-dubbed tracks.
-
-Large downloads are written to the extension's private storage on disk (OPFS) while downloading and merging,
-so a multi-gigabyte 4K/8K video does not have to fit in memory. Temporary files are deleted when the download
-finishes (and on the next browser start, if it was interrupted). This needs free disk space of roughly twice the
-video size; the extension asks for the *unlimited storage* permission for this reason.
+- **Video:** MP4 from 144p to 1080p (H.264), and 1440p, 4K and 8K (VP9/AV1)
+- **Audio:** MP3, M4A, Opus or WAV – with title, artist and cover art
+- **Works on regular videos and Shorts**, with a download button that looks like part of YouTube
+- **No quality loss:** video and original audio streams are copied, not re-encoded
+- **Private:** no accounts, no tracking, no third-party servers – the extension only talks to YouTube
 
 ## Installation
 
-Release builds of Firefox only install add-ons signed by Mozilla.
+1. Open the [latest release](../../releases/latest) and download `yt-downloader-vX.Y.Z.xpi`.
+2. Open the file in Firefox (or drag it onto a Firefox window) and click **Add**.
 
-1. **Signed .xpi (recommended)**: download the file from this repository's *Releases* page and open it in Firefox
-   (or drag it onto the browser window) → *Add*.
-2. **Unsigned (for testing)**: `about:debugging` → *This Firefox* → *Load Temporary Add-on* → select
-   `dist/manifest.json` or the `.xpi` file. It stays installed until the browser restarts.
-   Firefox Developer Edition / Nightly / ESR can install an unsigned .xpi permanently after setting
-   `xpinstall.signatures.required = false` in `about:config`.
+Requires Firefox 140 or newer. The `.xpi` is signed by Mozilla, so it stays installed after a restart.
 
-## Building
+**Updating:** the extension does not update itself (the repository is private). To update, install the newer
+`.xpi` from Releases the same way – it replaces the old version and keeps your settings.
+
+## How to use
+
+| Where | How |
+|---|---|
+| **Video page** | Click the ⬇ button in the player bar (next to the ⚙ settings gear) and pick a format. |
+| **Shorts** | Open the ⋮ menu in the top-right corner of the Short → **Download (MP3 / MP4)**. |
+| **Toolbar popup** | Click the extension icon: download the current video, paste any YouTube link, see progress and history. |
+| **Right-click** | On a YouTube link or video page: **Download from YouTube** / **Download this video**. |
+
+While a download runs, the ⬇ button shows a progress ring (on Shorts a small notice appears at the bottom).
+When it is done you get a system notification – click it to show the file in its folder.
+
+Files are saved to your **Downloads** folder, in a `YouTube` subfolder by default.
+
+## Formats
+
+### Video
+
+| Quality | Codec | Plays in |
+|---|---|---|
+| 144p – 1080p | H.264 + AAC | Everything: Windows, macOS, phones, TVs, video editors. |
+| 1440p, 4K, 8K (*Higher quality MP4*) | VP9 or AV1 + AAC | Firefox, Chrome, VLC, mpv, most recent phones and TVs. |
+
+YouTube does not offer H.264 above 1080p, so higher resolutions use VP9 (preferred) or AV1.
+On Windows the built-in player may need the free *VP9 Video Extensions* or *AV1 Video Extension* from the
+Microsoft Store; VLC plays them out of the box. HDR versions are skipped – you always get the SDR video.
+
+### Audio
+
+| Format | What you get | Good for |
+|---|---|---|
+| **MP3** | Converted, 128–320 kb/s (192 kb/s by default) | Any device, including old car stereos and MP3 players. |
+| **M4A** | YouTube's original AAC (~128 kb/s), not re-encoded | Same quality as on YouTube; plays on phones, iTunes, Windows. |
+| **Opus** ⭐ | YouTube's original Opus (~130–160 kb/s), not re-encoded | The best sound YouTube offers. Browsers, VLC, Android, foobar2000. |
+| **WAV** | Uncompressed 16-bit PCM | Audio and video editors. Large (~10 MB per minute). |
+
+WAV is only uncompressed for compatibility – it cannot sound better than the source.
+When a video has several audio tracks (dubbed or auto-dubbed), the original one is used.
+
+## Settings
+
+Use the ⚙ button in the popup, or `about:addons` → *YouTube Downloader* → *Preferences*:
+
+- **Subfolder in Downloads** – default `YouTube`; leave empty to save directly to Downloads
+- **Ask where to save each file**
+- **MP3 quality** – 128 / 192 / 256 / 320 kb/s
+- **Default MP4 quality** in the popup
+- **Simultaneous downloads** – 1 to 3
+
+## Permissions
+
+| Permission | Why |
+|---|---|
+| Access to youtube.com, googlevideo.com, ytimg.com, googleapis.com | Read video information, download the streams and the thumbnail used as cover art. |
+| Downloads | Save the finished file to your Downloads folder. |
+| Unlimited storage | Big 4K/8K files are assembled on disk instead of in memory. Temporary files are deleted right after saving. |
+| Tabs, notifications, context menus, storage | Progress in the player, "download finished" notifications, the right-click menu, your settings and history. |
+
+## Limitations and troubleshooting
+
+- **Live streams** (and premieres that are still live) cannot be downloaded.
+- **Age-restricted or members-only videos** may require you to be signed in to YouTube in Firefox.
+- **Playlists, subtitles and whole channels** are not supported – one video at a time.
+- **"YouTube blocked the download" or the button is missing:** refresh the YouTube tab. YouTube changes often;
+  if it keeps failing, a newer release is needed.
+- **4K/8K:** you need free disk space of roughly twice the file size while the download is being assembled.
+
+Please download only content you have the right to download, and respect YouTube's Terms of Service and
+the creators' copyright.
+
+## For developers
 
 Requires Node.js 22+.
 
 ```bash
 npm ci
+npm start            # development build + Firefox with the extension loaded
 npm run build        # production build into dist/
-npm run build:dev    # development build (sourcemaps, not minified)
-npm start            # launch Firefox with the extension (web-ext run)
 npm run lint         # web-ext lint
-npm run package      # dist/ + artifacts/yt-downloader-<version>-unsigned.xpi
+npm run package      # unsigned .xpi in artifacts/
 ```
 
-## Signing with Mozilla (unlisted channel)
+An unsigned build can be loaded temporarily via `about:debugging` → *This Firefox* → *Load Temporary Add-on*.
 
-Signing does not publish the extension on the AMO catalog — the file is only signed and you distribute it yourself.
+### Releasing
 
-1. Create an account on addons.mozilla.org and generate API keys: https://addons.mozilla.org/developers/addon/api/key/
-2. Locally:
-   ```bash
-   AMO_JWT_ISSUER=user:xxx AMO_JWT_SECRET=yyy npm run sign
-   ```
-3. Automatically with GitHub Actions: add the repository secrets `AMO_JWT_ISSUER` and `AMO_JWT_SECRET`,
-   then push a version tag:
-   ```bash
-   git tag v0.1.0 && git push origin v0.1.0
-   ```
-   The `release.yml` workflow sets the version from the tag, signs the package and attaches the signed `.xpi` to Releases.
-   Mozilla's approval usually takes a few minutes. Every new release needs a higher version number.
+Pushing a version tag builds the extension, signs it with Mozilla (unlisted – not published on addons.mozilla.org)
+and attaches the signed `.xpi` to a GitHub release:
 
-Note: Firefox automatic updates (`update_url`) require a publicly reachable `updates.json` file.
-They will not work from a private repository — install new versions manually from Releases.
+```bash
+git tag v0.1.3 && git push origin v0.1.3
+```
 
-## Project structure
+The repository needs the secrets `AMO_JWT_ISSUER` and `AMO_JWT_SECRET`
+([API keys from addons.mozilla.org](https://addons.mozilla.org/developers/addon/api/key/)).
+Every release needs a higher version number. Mozilla's approval usually takes a few minutes.
+
+### How it works
 
 ```
 src/
-  page/extractor.js     extraction in the YouTube page context (youtubei.js, BotGuard, Trusted Types)
-  content/              player button, Shorts menu item, bridge to the extractor
-  background/           queue, chunked downloading, MP4 muxing, MP3 encoding, saving,
-                        temporary files on disk (tempfiles.js)
-  popup/, options/      user interface
-scripts/build.mjs       esbuild + static file copying
-spike/                  stage 0 prototype (to be removed)
+  page/extractor.js     runs in the YouTube page: youtubei.js gets the stream list, BotGuard provides the PO token
+  content/              the player button, the Shorts menu item and the bridge to the extractor
+  background/           download queue, parallel chunked downloading, merging (Mediabunny),
+                        MP3 encoding (LAME in WebAssembly), temporary files on disk (OPFS), saving
+  popup/, options/      toolbar popup and settings page
+scripts/build.mjs       esbuild bundling into dist/
 ```
