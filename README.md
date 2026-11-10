@@ -1,18 +1,30 @@
 # YouTube Downloader (MP3/MP4) for Firefox
 
-A Firefox extension that downloads audio (MP3 with cover art and tags) and video (MP4 up to 1080p in H.264,
+A Firefox extension that downloads audio (MP3, M4A, Opus or WAV, with cover art and tags) and video (MP4 up to 1080p in H.264,
 and 1440p / 4K / 8K in VP9 or AV1) from YouTube.
 It is fully self-contained — no yt-dlp, ffmpeg or any other program is needed: extraction (youtubei.js + BotGuard/PO token),
 stream muxing and MP3 encoding (Mediabunny + LAME compiled to WASM) all run inside the browser.
 
 ## How to download
 
-- **Regular video**: the ⬇ button in the player bar, next to the settings gear → pick MP3 or an MP4 quality.
+- **Regular video**: the ⬇ button in the player bar, next to the settings gear → pick an audio format or an MP4 quality.
 - **Shorts**: the ⋮ menu in the top-right corner of the player → **Download (MP3 / MP4)**.
 - **Extension popup**: the current video, a field to paste any link, and the download list with progress.
 - **Context menu** on a video link or a video page.
 
 Files are saved to your downloads folder, by default in a `YouTube` subfolder (configurable in the extension settings).
+
+## Audio formats
+
+| Format | What you get | Best for |
+|---|---|---|
+| **MP3** | Re-encoded at 128–320 kb/s (setting, default 192 kb/s) | Plays on anything, including old car stereos and MP3 players. |
+| **M4A** | YouTube's original AAC audio (~128 kb/s), copied without re-encoding | Same quality as on YouTube, plays everywhere (phones, iTunes, Windows). |
+| **Opus** | YouTube's original Opus audio (~130–160 kb/s), copied without re-encoding | The best sound YouTube offers, smallest file. Plays in browsers, VLC, Android, foobar2000. |
+| **WAV** | Uncompressed 16-bit PCM decoded from the best source | Audio/video editors and DAWs that don't read lossy formats. Large (~10 MB per minute). |
+
+All audio files get the title, the channel name as artist, and the video thumbnail as square cover art.
+WAV cannot add quality that the source does not have – it is only uncompressed for compatibility.
 
 ## Video quality
 

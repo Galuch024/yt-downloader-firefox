@@ -1,6 +1,6 @@
 // Przycisk "Pobierz" w pasku odtwarzacza YouTube + menu wyboru formatu w stylu menu ustawien.
 // Bez innerHTML (YouTube wymusza Trusted Types) - elementy budowane przez createElement(NS).
-import { videoQualities, formatBytes } from '../shared/util.js';
+import { videoQualities, formatBytes, AUDIO_FORMATS, audioFor, audioSize } from '../shared/util.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const ICON_DOWNLOAD = 'M12 3a1 1 0 0 1 1 1v9.59l3.3-3.3a1 1 0 1 1 1.4 1.42l-5 5a1 1 0 0 1-1.4 0l-5-5a1 1 0 1 1 1.4-1.42l3.3 3.3V4a1 1 0 0 1 1-1zM5 19a1 1 0 1 0 0 2h14a1 1 0 1 0 0-2H5z';
@@ -272,9 +272,22 @@ export class PlayerButton {
     const nodes = [this.header('Download', dur)];
 
     nodes.push(el('div', 'ytdl-menu-section', 'Audio'));
-    const audio = info.audios.find((a) => a.mime.includes('mp4a')) || info.audios[0];
-    nodes.push(this.item(ICON_MUSIC, 'MP3', `${settings.mp3Bitrate} kb/s${audio?.size ? ` · ~${formatBytes((info.duration || 0) * settings.mp3Bitrate * 125)}` : ''}`, null,
-      () => this.deps.onChoose('mp3', null)));
+    const audio = audioFor(info, 'mp4');
+    const kbps = (a) => (a?.bitrate ? `${Math.round(a.bitrate / 1000)} kb/s` : null);
+    const approx = (mode) => { const n = audioSize(info, mode, settings.mp3Bitrate); return n ? `~${formatBytes(n)}` : null; };
+    const audioDetails = {
+      mp3: [`${settings.mp3Bitrate} kb/s`, approx('mp3')],
+      m4a: ['AAC', kbps(audioFor(info, 'm4a')), approx('m4a')],
+      opus: [kbps(audioFor(info, 'opus')), approx('opus')],
+      wav: ['PCM', approx('wav')],
+    };
+    for (const [mode, fmt] of Object.entries(AUDIO_FORMATS)) {
+      if (!audioFor(info, mode)) continue;
+      const it = this.item(ICON_MUSIC, fmt.label, audioDetails[mode].filter(Boolean).join(' · '), mode === 'opus' ? 'BEST' : null,
+        () => this.deps.onChoose(mode, null));
+      it.title = fmt.hint;
+      nodes.push(it);
+    }
 
     const qualities = videoQualities(info);
     const sizeOf = (q) => {

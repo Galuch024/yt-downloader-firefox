@@ -1,9 +1,9 @@
 // Tlo wtyczki: kolejka zadan, pobieranie, przetwarzanie, zapis, menu PPM, powiadomienia.
 import { downloadStream } from './downloader.js';
-import { muxMp4, toMp3, fetchCover } from './media.js';
+import { muxMp4, convertAudio, fetchCover } from './media.js';
 import { extractVideo, extractOnTab, releaseEngineTab } from './engine.js';
 import { opfsAvailable, createTempFile, clearTempFiles } from './tempfiles.js';
-import { pickFormats, sanitizeFilename, videoIdFromUrl, getSettings } from '../shared/util.js';
+import { pickFormats, sanitizeFilename, videoIdFromUrl, getSettings, isAudioMode, parseChoice, jobLabel, AUDIO_FORMATS } from '../shared/util.js';
 
 /** @type {Map<string, any>} */
 const jobs = new Map();
@@ -53,7 +53,7 @@ function enqueue({ info, mode, quality, tabId, engineTab = false }) {
   const height = formats.video?.height || formats.muxed?.height;
   const job = {
     id, videoId: info.videoId, title: info.title, author: info.author, mode, quality: height ? String(height) : null,
-    label: mode === 'mp3' ? 'MP3' : `MP4 ${height}p`, info, formats, tabId, engineTab,
+    label: jobLabel(mode, height), info, formats, tabId, engineTab,
     state: 'queued', stage: 'Queued', progress: 0, bytes: 0, totalBytes: 0, createdAt: Date.now(),
   };
   jobs.set(id, job);
@@ -121,15 +121,17 @@ async function runJob(job) {
 
     let output;
     let ext;
-    if (job.mode === 'mp3') {
+    if (isAudioMode(job.mode)) {
+      const fmt = AUDIO_FORMATS[job.mode];
       const [{ blob: audioBlob }, cover] = await Promise.all([dl(audio, 'a'), fetchCover(job.videoId)]);
-      update(job, { state: 'processing', stage: 'Converting to MP3', progress: 0.9 });
+      update(job, { state: 'processing', stage: fmt.copy ? `Writing ${fmt.label}` : `Converting to ${fmt.label}`, progress: 0.9 });
       const tags = { title: job.title, artist: job.author, ...(cover ? { images: [{ data: cover, mimeType: 'image/jpeg', kind: 'coverFront' }] } : {}) };
-      output = await toMp3(audioBlob, {
+      output = await convertAudio(audioBlob, job.mode, {
         bitrate: settings.mp3Bitrate, tags, signal,
+        temp: job.mode === 'wav' ? await newTemp('out') : undefined,
         onProgress: (p) => update(job, { progress: 0.9 + p * 0.09 }),
       });
-      ext = 'mp3';
+      ext = fmt.ext;
     } else if (muxed) {
       output = (await dl(muxed, 'm')).blob;
       ext = 'mp4';
@@ -201,6 +203,11 @@ browser.notifications.onClicked.addListener((nid) => {
 
 const MENU_ITEMS = [
   { id: 'mp3', title: 'MP3 (audio)' },
+  { id: 'm4a', title: 'M4A (original AAC audio)' },
+  { id: 'opus', title: 'Opus (original audio, best quality)' },
+  { id: 'wav', title: 'WAV (uncompressed audio)' },
+  { id: 'sep', type: 'separator' },
+  { id: 'mp4-2160', title: 'MP4 4K (VP9/AV1)' },
   { id: 'mp4-1080', title: 'MP4 1080p' },
   { id: 'mp4-720', title: 'MP4 720p' },
   { id: 'mp4-480', title: 'MP4 480p' },
@@ -213,18 +220,18 @@ function createMenus() {
     browser.contextMenus.create({ id: 'link', title: 'Download from YouTube', contexts: ['link'], targetUrlPatterns: YT_LINKS });
     browser.contextMenus.create({ id: 'page', title: 'Download this video', contexts: ['page', 'video'], documentUrlPatterns: YT_LINKS });
     for (const parent of ['link', 'page']) {
-      for (const it of MENU_ITEMS) browser.contextMenus.create({ id: `${parent}:${it.id}`, parentId: parent, title: it.title, contexts: parent === 'link' ? ['link'] : ['page', 'video'] });
+      for (const it of MENU_ITEMS) browser.contextMenus.create({ id: `${parent}:${it.id}`, parentId: parent, type: it.type || 'normal', ...(it.title ? { title: it.title } : {}), contexts: parent === 'link' ? ['link'] : ['page', 'video'] });
     }
   });
 }
 
 browser.contextMenus.onClicked.addListener(async (info, tab) => {
   const [, choice] = String(info.menuItemId).split(':');
-  if (!choice) return;
+  if (!choice || choice === 'sep') return;
   const url = info.linkUrl || info.pageUrl;
   const videoId = videoIdFromUrl(url);
   if (!videoId) return;
-  const [mode, quality] = choice === 'mp3' ? ['mp3', null] : ['mp4', choice.split('-')[1]];
+  const [mode, quality] = parseChoice(choice);
   const onYoutube = /^https?:\/\/www\.youtube\.com\//.test(tab?.url || '');
   enqueueByVideoId(videoId, mode, quality, onYoutube ? tab.id : null).catch((e) => {
     notify({ id: `err-${Date.now()}` }, 'Download failed', String(e?.message ?? e));

@@ -1,5 +1,5 @@
 // Popup wtyczki: pobieranie z aktywnej karty, z wklejonego adresu i lista pobran.
-import { videoIdFromUrl, videoQualities, getSettings, formatBytes } from '../shared/util.js';
+import { videoIdFromUrl, videoQualities, getSettings, formatBytes, parseChoice, AUDIO_FORMATS, audioFor } from '../shared/util.js';
 
 const $ = (id) => document.getElementById(id);
 const jobs = new Map();
@@ -95,6 +95,10 @@ async function initCurrent() {
   const def = qualities.find((q) => Number(q.quality) <= Number(settings.defaultQuality)) || qualities[0];
   if (def) sel.value = def.quality;
   $('dl-mp4').disabled = !qualities.length;
+  const asel = $('audio-format');
+  const audioModes = Object.keys(AUDIO_FORMATS).filter((m) => audioFor(info, m));
+  asel.replaceChildren(...audioModes.map((m) => Object.assign(new Option(AUDIO_FORMATS[m].label, m), { title: AUDIO_FORMATS[m].hint })));
+  $('dl-audio').disabled = !audioModes.length;
   $('actions').hidden = false;
 
   const go = async (mode, quality) => {
@@ -102,7 +106,7 @@ async function initCurrent() {
     status.classList.toggle('error', !res?.ok);
     status.textContent = res?.ok ? `Added: ${res.job.label}` : res?.error || 'Error';
   };
-  $('dl-mp3').addEventListener('click', () => go('mp3', null));
+  $('dl-audio').addEventListener('click', () => go(asel.value, null));
   $('dl-mp4').addEventListener('click', () => go('mp4', sel.value));
 }
 
@@ -111,7 +115,7 @@ async function initCurrent() {
 $('dl-url').addEventListener('click', async () => {
   const status = $('url-status');
   const url = $('url').value.trim();
-  const [mode, quality] = $('url-format').value === 'mp3' ? ['mp3', null] : ['mp4', $('url-format').value.split('-')[1]];
+  const [mode, quality] = parseChoice($('url-format').value);
   status.classList.remove('error');
   status.textContent = 'Preparing…';
   $('dl-url').disabled = true;

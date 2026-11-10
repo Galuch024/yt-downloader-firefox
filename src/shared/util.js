@@ -49,13 +49,53 @@ export function videoQualities(info) {
     }));
 }
 
+/**
+ * Formaty audio. copy = bez przeliczania (oryginalny strumien YouTube w nowym pojemniku).
+ * - MP3: przeliczane, gra wszedzie
+ * - M4A: oryginalne AAC (~128 kb/s), gra wszedzie, bez straty jakosci
+ * - Opus: oryginalny Opus (~130-160 kb/s), najlepsza jakosc dzwieku na YouTube
+ * - WAV: nieskompresowane PCM (do montazu / programow, ktore nie czytaja formatow stratnych)
+ */
+export const AUDIO_FORMATS = {
+  mp3: { label: 'MP3', ext: 'mp3', copy: false, hint: 'Plays everywhere' },
+  m4a: { label: 'M4A', ext: 'm4a', copy: true, hint: 'Original AAC audio, no re-encoding, plays everywhere' },
+  opus: { label: 'Opus', ext: 'opus', copy: true, hint: 'Original Opus audio, no re-encoding, best quality on YouTube' },
+  wav: { label: 'WAV', ext: 'wav', copy: false, hint: 'Uncompressed PCM for audio and video editors (large files)' },
+};
+export const isAudioMode = (mode) => Object.hasOwn(AUDIO_FORMATS, mode);
+
+/** "mp3" / "opus" / "mp4-1080" -> [mode, quality] */
+export const parseChoice = (choice) => (isAudioMode(choice) ? [choice, null] : ['mp4', String(choice).split('-')[1]]);
+
+export const jobLabel = (mode, height) => AUDIO_FORMATS[mode]?.label ?? `MP4 ${height}p`;
+
+/** Strumien audio uzyty dla danego formatu (do wyboru i do szacowania rozmiaru). */
+export function audioFor(info, mode) {
+  const best = (codec) => info.audios.filter((a) => a.mime.includes(codec)).sort((a, b) => b.bitrate - a.bitrate)[0];
+  const aac = best('mp4a');
+  const opus = best('opus');
+  if (mode === 'm4a') return aac;
+  if (mode === 'opus') return opus;
+  if (mode === 'wav') return opus || aac; // dekodowanie z lepszego zrodla
+  return aac || opus;
+}
+
+/** Szacowany rozmiar pliku audio w bajtach. */
+export function audioSize(info, mode, mp3Bitrate = 192) {
+  const d = info.duration || 0;
+  const a = audioFor(info, mode);
+  if (mode === 'mp3') return d * mp3Bitrate * 125;
+  if (mode === 'wav') return d * (a?.mime.includes('opus') ? 48000 : 44100) * 4;
+  return a?.size || 0;
+}
+
 /** Wybiera strumienie do pobrania dla trybu i jakosci. */
 export function pickFormats(info, mode, quality) {
-  const audioMp4 = info.audios.filter((a) => a.mime.includes('mp4a')).sort((a, b) => b.bitrate - a.bitrate)[0];
-  const audioAny = audioMp4 || [...info.audios].sort((a, b) => b.bitrate - a.bitrate)[0];
-  if (mode === 'mp3') {
-    if (!audioAny) throw new Error('No audio track for this video');
-    return { audio: audioAny };
+  const audioAny = audioFor(info, 'mp4');
+  if (isAudioMode(mode)) {
+    const audio = audioFor(info, mode);
+    if (!audio) throw new Error(mode === 'opus' ? 'No Opus audio for this video' : mode === 'm4a' ? 'No AAC audio for this video' : 'No audio track for this video');
+    return { audio };
   }
   const want = Number(quality) || 1080;
   const candidates = info.videos.filter((v) => v.height <= want).sort((a, b) => b.height - a.height || b.fps - a.fps || b.bitrate - a.bitrate);

@@ -24,10 +24,13 @@
     </div>
     <div id="current-status" class="status"></div>
     <div id="actions" class="actions" hidden>
-      <button id="dl-mp3" class="btn primary">MP3</button>
+      <div class="split">
+        <select id="audio-format" aria-label="Audio format"></select>
+        <button id="dl-audio" class="btn primary">Audio</button>
+      </div>
       <div class="split">
         <select id="quality" aria-label="MP4 quality"></select>
-        <button id="dl-mp4" class="btn primary">MP4</button>
+        <button id="dl-mp4" class="btn primary">Video</button>
       </div>
     </div>
   </section>
@@ -40,6 +43,9 @@
     <div class="row">
       <select id="url-format" aria-label="Format">
         <option value="mp3">MP3</option>
+        <option value="m4a">M4A (original AAC)</option>
+        <option value="opus">Opus (original, best quality)</option>
+        <option value="wav">WAV (uncompressed)</option>
         <option value="mp4-2160">MP4 4K (VP9/AV1)</option>
         <option value="mp4-1440">MP4 1440p (VP9/AV1)</option>
         <option value="mp4-1080">MP4 1080p</option>

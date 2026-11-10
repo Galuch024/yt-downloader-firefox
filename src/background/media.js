@@ -1,6 +1,7 @@
 // Przetwarzanie mediow: scalanie MP4 bez rekodowania i konwersja do MP3 (LAME w WASM).
 import {
   Input, Output, ALL_FORMATS, BlobSource, BufferTarget, StreamTarget, Mp4OutputFormat, Mp3OutputFormat,
+  OggOutputFormat, WavOutputFormat,
   EncodedPacketSink, EncodedVideoPacketSource, EncodedAudioPacketSource, Conversion, canEncodeAudio,
 } from 'mediabunny';
 import { registerMp3Encoder } from '@mediabunny/mp3-encoder';
@@ -58,18 +59,32 @@ export async function muxMp4(videoBlob, audioBlob, { tags = {}, signal, onProgre
   return new Blob([target.buffer], { type: 'video/mp4' });
 }
 
-/** Konwertuje audio do MP3 z tagami ID3 i okladka. */
-export async function toMp3(audioBlob, { bitrate = 192, tags = {}, signal, onProgress } = {}) {
-  await ensureMp3Encoder();
+const AUDIO_OUT = {
+  mp3: { format: () => new Mp3OutputFormat(), audio: (o) => ({ codec: 'mp3', bitrate: o.bitrate * 1000 }), mime: 'audio/mpeg' },
+  // M4A i Opus: bez opcji audio Conversion kopiuje pakiety (bez przeliczania)
+  m4a: { format: () => new Mp4OutputFormat({ fastStart: 'in-memory' }), audio: () => undefined, mime: 'audio/mp4' },
+  opus: { format: () => new OggOutputFormat(), audio: () => undefined, mime: 'audio/ogg' },
+  wav: { format: () => new WavOutputFormat({ metadataFormat: 'id3' }), audio: () => ({ codec: 'pcm-s16' }), mime: 'audio/wav' },
+};
+
+/**
+ * Zapisuje audio w wybranym formacie (mp3 / m4a / opus / wav) z tagami i okladka.
+ * temp: plik tymczasowy - wynik trafia na dysk (WAV z dlugiego nagrania ma setki MB).
+ */
+export async function convertAudio(audioBlob, kind, { bitrate = 192, tags = {}, signal, onProgress, temp } = {}) {
+  const spec = AUDIO_OUT[kind];
+  if (!spec) throw new Error(`Unknown audio format: ${kind}`);
+  if (kind === 'mp3') await ensureMp3Encoder();
   const input = new Input({ source: new BlobSource(audioBlob), formats: ALL_FORMATS });
-  const target = new BufferTarget();
-  const output = new Output({ format: new Mp3OutputFormat(), target });
+  const target = temp ? new StreamTarget(temp.writable, { chunked: true }) : new BufferTarget();
+  const output = new Output({ format: spec.format(), target });
+  const audio = spec.audio({ bitrate });
   const conversion = await Conversion.init({
     input, output,
-    audio: { codec: 'mp3', bitrate: bitrate * 1000 },
+    ...(audio ? { audio } : {}),
     tags: () => tags,
   });
-  if (!conversion.isValid) throw new Error('Could not convert the audio to MP3');
+  if (!conversion.isValid) throw new Error(`Could not convert the audio to ${kind.toUpperCase()}`);
   if (onProgress) conversion.onProgress = onProgress;
   const onAbort = () => conversion.cancel?.();
   signal?.addEventListener('abort', onAbort, { once: true });
@@ -79,7 +94,8 @@ export async function toMp3(audioBlob, { bitrate = 192, tags = {}, signal, onPro
     signal?.removeEventListener('abort', onAbort);
   }
   if (signal?.aborted) throw new DOMException('Cancelled', 'AbortError');
-  return new Blob([target.buffer], { type: 'audio/mpeg' });
+  if (temp) { temp.markClosed(); return temp.file(); }
+  return new Blob([target.buffer], { type: spec.mime });
 }
 
 /** Okladka: kwadratowy kadr ze srodka miniatury (bez czarnych pasow). */

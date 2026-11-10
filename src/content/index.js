@@ -1,7 +1,7 @@
 // Content script na youtube.com: most do ekstraktora w swiecie strony + przycisk w odtwarzaczu.
 import { PlayerButton, errorText } from './button.js';
 import { ShortsMenu, isShortsPage, shortsPlayerRect, toast } from './shorts.js';
-import { videoIdFromUrl, getSettings } from '../shared/util.js';
+import { videoIdFromUrl, getSettings, parseChoice, jobLabel, AUDIO_FORMATS } from '../shared/util.js';
 
 const CHANNEL = crypto.randomUUID();
 const INFO_TTL = 20 * 60 * 1000;
@@ -68,7 +68,7 @@ const button = new PlayerButton({
   onChoose: async (mode, quality) => {
     const videoId = currentVideoId();
     if (!videoId) return;
-    const label = mode === 'mp3' ? 'MP3' : `MP4 ${quality}p`;
+    const label = jobLabel(mode, quality);
     button.onJob({ videoId, state: 'queued', stage: 'Preparing', progress: 0, label });
     const info = await loadInfo(videoId);
     const r = await browser.runtime.sendMessage({ type: 'enqueue', info, mode, quality });
@@ -137,7 +137,7 @@ tick();
 // ---------------------------------------------------------------- autotest (tylko build deweloperski)
 
 if (__DEV__) {
-  const m = location.hash.match(/ytdl-autotest=(shorts-)?(mp3|mp4-\d+)/);
+  const m = location.hash.match(/ytdl-autotest=(shorts-)?(mp3|m4a|opus|wav|mp4-\d+)/);
   if (m) (m[1] ? runShortsAutotest(m[2]) : runAutotest(m[2]));
 }
 
@@ -162,7 +162,7 @@ async function runAutotest(choice) {
     step('zrzut-menu', cap);
     button.closeMenu();
 
-    const [mode, q] = choice === 'mp3' ? ['mp3', null] : ['mp4', choice.split('-')[1]];
+    const [mode, q] = parseChoice(choice);
     const job = await button.deps.onChoose(mode, q);
     step('kolejka', { job: job?.id, label: job?.label });
     // zrzut przycisku z pierscieniem postepu (paski sterowania wymuszone na widoczne)
@@ -209,7 +209,7 @@ async function runShortsAutotest(choice) {
     const dd = [...document.querySelectorAll('ytd-popup-container tp-yt-iron-dropdown')].some((d) => d.style.display !== 'none');
     step('menu', { items: opts.map((x) => x.textContent), dropdownStillOpen: dd, error: document.querySelector('.ytdl-error-text')?.textContent, rect: JSON.parse(JSON.stringify(document.querySelector('.ytdl-menu')?.getBoundingClientRect() ?? {})) });
     step('zrzut-menu', await browser.runtime.sendMessage({ type: 'autotest-capture', name: name('menu') }));
-    const target = opts.find((x) => (choice === 'mp3' ? x.textContent.startsWith('MP3') : x.textContent.startsWith(`${choice.split("-")[1]}p`))) || opts[1];
+    const target = opts.find((x) => (AUDIO_FORMATS[choice] ? x.textContent.startsWith(AUDIO_FORMATS[choice].label) : x.textContent.startsWith(`${choice.split('-')[1]}p`))) || opts[1];
     target.click();
     await sleep(800);
     step('zrzut-toast', await browser.runtime.sendMessage({ type: 'autotest-capture', name: name('toast') }));

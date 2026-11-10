@@ -11,6 +11,7 @@
 - ✅ Powyżej 1080p (2026-11-10): 1440p/4K/8K w VP9 (preferowany) lub AV1, bez HDR, bez rekodowania, w MP4.
   Duże pliki pobierane i scalane na dysk (OPFS, `src/background/tempfiles.js`, fastStart 'reserve'),
   uprawnienie `unlimitedStorage`. Oryginalna ścieżka audio ma pierwszeństwo przed dubbingiem.
+- ✅ Formaty audio (2026-11-10): MP3, M4A (oryginalne AAC), Opus (oryginalny), WAV (PCM); okładka i tagi we wszystkich.
 - ⏳ Do zrobienia: lokalizacja (etap 7), automatyczne aktualizacje (wymagają publicznego adresu update_url), testy etapu 9.
 
 ## 1. Cel i zakres
