@@ -12,7 +12,7 @@
   },
   "icons": { "48": "icons/icon.svg", "96": "icons/icon.svg" },
   "permissions": [
-    "downloads", "storage", "notifications", "contextMenus", "tabs",
+    "downloads", "storage", "unlimitedStorage", "notifications", "contextMenus", "tabs",
     "*://*.youtube.com/*", "*://*.googlevideo.com/*", "*://*.googleapis.com/*", "*://*.ytimg.com/*"
   ],
   "background": { "scripts": ["background.js"], "persistent": true },

@@ -8,6 +8,9 @@
   Jakość liczona po krótszym boku klatki (pionowe 1080×1920 = 1080p).
 - ✅ Etap 8 (częściowo): `npm run package` buduje niepodpisany .xpi, GitHub Actions budują go przy każdym pushu,
   a tag `v*` podpisuje paczkę u Mozilli (kanał unlisted) i publikuje ją w Releases.
+- ✅ Powyżej 1080p (2026-11-10): 1440p/4K/8K w VP9 (preferowany) lub AV1, bez HDR, bez rekodowania, w MP4.
+  Duże pliki pobierane i scalane na dysk (OPFS, `src/background/tempfiles.js`, fastStart 'reserve'),
+  uprawnienie `unlimitedStorage`. Oryginalna ścieżka audio ma pierwszeństwo przed dubbingiem.
 - ⏳ Do zrobienia: lokalizacja (etap 7), automatyczne aktualizacje (wymagają publicznego adresu update_url), testy etapu 9.
 
 ## 1. Cel i zakres

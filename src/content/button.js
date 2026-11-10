@@ -277,12 +277,25 @@ export class PlayerButton {
       () => this.deps.onChoose('mp3', null)));
 
     const qualities = videoQualities(info);
-    nodes.push(el('div', 'ytdl-menu-section', 'Video MP4'));
-    if (!qualities.length) nodes.push(el('div', 'ytdl-menu-empty', 'No H.264 streams for this video'));
-    for (const q of qualities) {
+    const sizeOf = (q) => {
       const v = info.videos.find((x) => String(x.height) === q.quality);
-      const size = v && audio ? formatBytes((v.size || 0) + (audio.size || 0)) : null;
-      nodes.push(this.item(ICON_VIDEO, q.label, size, q.hd ? 'HD' : null, () => this.deps.onChoose('mp4', q.quality)));
+      return v && audio ? formatBytes((v.size || 0) + (audio.size || 0)) : null;
+    };
+    const std = qualities.filter((q) => !q.hiRes);
+    const hi = qualities.filter((q) => q.hiRes);
+    nodes.push(el('div', 'ytdl-menu-section', 'Video MP4'));
+    if (!std.length) nodes.push(el('div', 'ytdl-menu-empty', 'No H.264 streams for this video'));
+    for (const q of std) nodes.push(this.item(ICON_VIDEO, q.label, sizeOf(q), q.badge, () => this.deps.onChoose('mp4', q.quality)));
+    if (hi.length) {
+      // VP9/AV1: bez rekodowania, ale starsze odtwarzacze i programy moga ich nie obsluzyc
+      const sec = el('div', 'ytdl-menu-section', 'Higher quality MP4');
+      sec.title = 'VP9/AV1 video. Plays in browsers, VLC and most new devices; older players and editors may not support it.';
+      sec.append(el('span', 'ytdl-menu-section-note', ' · VP9/AV1'));
+      nodes.push(sec);
+      for (const q of hi) {
+        const size = sizeOf(q);
+        nodes.push(this.item(ICON_VIDEO, q.label, [q.codec, size].filter(Boolean).join(' · '), q.badge, () => this.deps.onChoose('mp4', q.quality)));
+      }
     }
     this.menu.replaceChildren(...nodes);
     this.menu.querySelector('.ytdl-menu-item')?.focus({ preventScroll: true });

@@ -1,6 +1,6 @@
 // Przetwarzanie mediow: scalanie MP4 bez rekodowania i konwersja do MP3 (LAME w WASM).
 import {
-  Input, Output, ALL_FORMATS, BlobSource, BufferTarget, Mp4OutputFormat, Mp3OutputFormat,
+  Input, Output, ALL_FORMATS, BlobSource, BufferTarget, StreamTarget, Mp4OutputFormat, Mp3OutputFormat,
   EncodedPacketSink, EncodedVideoPacketSource, EncodedAudioPacketSource, Conversion, canEncodeAudio,
 } from 'mediabunny';
 import { registerMp3Encoder } from '@mediabunny/mp3-encoder';
@@ -22,21 +22,28 @@ async function copyTrack(track, source, signal, onPacket) {
   }
 }
 
-/** Laczy wideo (MP4/H.264) i audio (M4A/AAC lub Opus) w jeden plik MP4. */
-export async function muxMp4(videoBlob, audioBlob, { tags = {}, signal, onProgress } = {}) {
+/**
+ * Laczy wideo (H.264 / VP9 / AV1) i audio (AAC lub Opus) w jeden plik MP4, bez rekodowania.
+ * temp: plik tymczasowy - wynik pisany jest na dysk (fastStart 'reserve': indeks na poczatku pliku,
+ * bez trzymania calego filmu w RAM). Bez temp: plik budowany w pamieci.
+ * estimate: { duration (s), fps } - do zarezerwowania miejsca na indeks.
+ */
+export async function muxMp4(videoBlob, audioBlob, { tags = {}, signal, onProgress, temp, estimate = {} } = {}) {
   const vIn = new Input({ source: new BlobSource(videoBlob), formats: ALL_FORMATS });
   const aIn = new Input({ source: new BlobSource(audioBlob), formats: ALL_FORMATS });
   const vt = await vIn.getPrimaryVideoTrack();
   const at = await aIn.getPrimaryAudioTrack();
   if (!vt || !at) throw new Error('The downloaded data has no video or audio track');
-  const duration = (await vt.computeDuration?.()) || 0;
+  const duration = (await vt.computeDuration?.()) || estimate.duration || 0;
 
-  const target = new BufferTarget();
-  const out = new Output({ format: new Mp4OutputFormat({ fastStart: 'in-memory' }), target });
+  const target = temp ? new StreamTarget(temp.writable, { chunked: true, chunkSize: 16 * 1024 * 1024 }) : new BufferTarget();
+  const out = new Output({ format: new Mp4OutputFormat({ fastStart: temp ? 'reserve' : 'in-memory' }), target });
   const vs = new EncodedVideoPacketSource(await vt.getCodec());
   const as = new EncodedAudioPacketSource(await at.getCodec());
-  out.addVideoTrack(vs);
-  out.addAudioTrack(as);
+  // gorne oszacowanie liczby pakietow (zapas na zmienna liczbe klatek); nadmiar to tylko kilka KB pustego miejsca
+  const secs = Math.max(duration, estimate.duration || 0) + 5;
+  out.addVideoTrack(vs, temp ? { maximumPacketCount: Math.ceil(secs * Math.max(estimate.fps || 0, 60) * 1.25) + 500 } : undefined);
+  out.addAudioTrack(as, temp ? { maximumPacketCount: Math.ceil(secs * (48000 / 1024) * 1.25) + 500 } : undefined);
   if (Object.keys(tags).length) out.setMetadataTags(tags);
   await out.start();
   await Promise.all([
@@ -44,6 +51,10 @@ export async function muxMp4(videoBlob, audioBlob, { tags = {}, signal, onProgre
     copyTrack(at, as, signal),
   ]);
   await out.finalize();
+  if (temp) {
+    temp.markClosed(); // StreamTarget zamyka strumien przy finalize
+    return temp.file();
+  }
   return new Blob([target.buffer], { type: 'video/mp4' });
 }
 

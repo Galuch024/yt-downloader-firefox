@@ -26,7 +26,10 @@ export function sanitizeFilename(name, maxLen = 150) {
   return s || 'film';
 }
 
-/** Lista jakosci MP4 dostepnych dla danego filmu (wysokosci <= 1080, H.264). */
+/**
+ * Lista jakosci MP4 dla filmu. Do 1080p H.264 (gra wszedzie), powyzej VP9/AV1 (flaga hiRes).
+ * badge: oznaczenie jak w odtwarzaczu YouTube (HD / 4K / 8K).
+ */
 export function videoQualities(info) {
   const byHeight = new Map();
   for (const v of info.videos) {
@@ -36,7 +39,14 @@ export function videoQualities(info) {
   if (info.muxed?.some((m) => m.height === 360) && !byHeight.has(360)) byHeight.set(360, { height: 360, fps: 30 });
   return [...byHeight.values()]
     .sort((a, b) => b.height - a.height)
-    .map((v) => ({ quality: String(v.height), label: `${v.height}p${v.fps > 30 ? v.fps : ''}`, hd: v.height >= 720 }));
+    .map((v) => ({
+      quality: String(v.height),
+      label: `${v.height}p${v.fps > 30 ? v.fps : ''}`,
+      hd: v.height >= 720,
+      badge: v.height >= 4320 ? '8K' : v.height >= 2160 ? '4K' : v.height >= 720 ? 'HD' : null,
+      hiRes: v.height > 1080,
+      codec: v.codec === 'av1' ? 'AV1' : v.codec === 'vp9' ? 'VP9' : 'H.264',
+    }));
 }
 
 /** Wybiera strumienie do pobrania dla trybu i jakosci. */
@@ -52,7 +62,7 @@ export function pickFormats(info, mode, quality) {
   const video = candidates[0] || [...info.videos].sort((a, b) => a.height - b.height)[0];
   const muxed = info.muxed?.find((m) => m.height <= want);
   if (muxed && (!video || video.height <= muxed.height)) return { muxed };
-  if (!video) throw new Error('No H.264 video stream for this video');
+  if (!video) throw new Error('No video stream for this video');
   if (!audioAny) throw new Error('No audio track for this video');
   return { video, audio: audioAny };
 }

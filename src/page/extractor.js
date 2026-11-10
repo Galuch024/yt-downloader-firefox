@@ -7,7 +7,8 @@ import { buildURL, getHeaders } from 'bgutils-js/utils';
 
 const REQUEST_KEY = 'O43z0dpjhgX20SCx4KAo';
 const CLIENTS = ['TV_SIMPLY']; // kolejne klienty mozna dopisac, jesli YouTube cos zmieni
-const MAX_HEIGHT = 1080;
+const MAX_HEIGHT = 1080; // H.264 (avc1) - YouTube nie wydaje go powyzej 1080p
+const MAX_HD_HEIGHT = 4320; // powyzej 1080p: VP9 lub AV1 (do 8K)
 
 const self = document.currentScript;
 const CHANNEL = self?.dataset.channel;
@@ -113,10 +114,14 @@ async function extractWith(videoId, withCookies) {
     const player = yt.session.player;
     // "jakosc" = krotszy bok klatki (pionowe Shorts 1080x1920 to 1080p, nie 1920p)
     const qual = (f) => (f.width && f.height ? Math.min(f.width, f.height) : f.height || 0);
+    const codecOf = (f) => (f.mime_type.includes('avc1') ? 'h264' : f.mime_type.includes('av01') ? 'av1' : f.mime_type.includes('vp9') || f.mime_type.includes('vp09') ? 'vp9' : 'other');
     const toEntry = async (f) => ({
       itag: f.itag, mime: f.mime_type, bitrate: f.bitrate || 0, size: Number(f.content_length) || 0,
-      height: qual(f), fps: f.fps || 0, url: await f.decipher(player),
+      height: qual(f), fps: f.fps || 0, codec: f.has_video ? codecOf(f) : undefined, url: await f.decipher(player),
     });
+    // HDR (PQ/HLG) na zwyklym ekranie wyglada na wyprane - bierzemy tylko SDR
+    const isHdr = (f) => /HDR/i.test(f.quality_label || '') || /SMPTEST2084|ARIB_STD_B67|2084|HLG/i.test(f.color_info?.transfer_characteristics || '');
+    const better = (f, cur) => !cur || (f.fps || 0) > (cur.fps || 0) || ((f.fps || 0) === (cur.fps || 0) && f.bitrate > cur.bitrate);
 
     // wideo H.264 bez dzwieku: najlepszy format na kazda wysokosc
     const byHeight = new Map();
@@ -124,12 +129,31 @@ async function extractWith(videoId, withCookies) {
       const q = qual(f);
       if (!f.has_video || f.has_audio || !f.mime_type.includes('avc1') || !q || q > MAX_HEIGHT) continue;
       const cur = byHeight.get(q);
-      if (!cur || (f.fps || 0) > (cur.fps || 0) || ((f.fps || 0) === (cur.fps || 0) && f.bitrate > cur.bitrate)) byHeight.set(q, f);
+      if (better(f, cur)) byHeight.set(q, f);
+    }
+
+    // powyzej 1080p tylko VP9/AV1. Preferujemy VP9 (lepsza zgodnosc odtwarzaczy, lzejszy dekoding 4K);
+    // AV1 tylko gdy VP9 nie ma (np. 8K), albo ma wyraznie wiecej klatek.
+    const hdByHeight = new Map();
+    for (const f of adaptive) {
+      const q = qual(f);
+      if (!f.has_video || f.has_audio || q <= MAX_HEIGHT || q > MAX_HD_HEIGHT || isHdr(f)) continue;
+      const c = codecOf(f);
+      if (c !== 'vp9' && c !== 'av1') continue;
+      const cur = hdByHeight.get(q);
+      if (!cur) { hdByHeight.set(q, f); continue; }
+      const cc = codecOf(cur);
+      if (c === cc) { if (better(f, cur)) hdByHeight.set(q, f); }
+      else if (c === 'vp9' ? (f.fps || 0) >= (cur.fps || 0) : (f.fps || 0) > (cur.fps || 0)) hdByHeight.set(q, f);
     }
     const videos = await Promise.all([...byHeight.values()].map(toEntry));
+    let hdVideos = await Promise.all([...hdByHeight.values()].map(toEntry));
 
     // audio: najlepsze AAC (mp4a) i najlepsze Opus
-    const pickAudio = (codec) => adaptive.filter((f) => f.has_audio && !f.has_video && f.mime_type.includes(codec)).sort((a, b) => b.bitrate - a.bitrate)[0];
+    // oryginalna sciezka (nie dubbing/auto-dubbing) i bez "stabilnej glosnosci" (DRC) maja pierwszenstwo
+    const audioRank = (f) => (f.is_auto_dubbed || f.is_dubbed ? 2 : 0) + (f.is_drc ? 1 : 0);
+    const pickAudio = (codec) => adaptive.filter((f) => f.has_audio && !f.has_video && f.mime_type.includes(codec))
+      .sort((a, b) => audioRank(a) - audioRank(b) || b.bitrate - a.bitrate)[0];
     const audios = await Promise.all([pickAudio('mp4a'), pickAudio('opus')].filter(Boolean).map(toEntry));
 
     // strumien z gotowym dzwiekiem (np. itag 18, 360p)
@@ -142,6 +166,12 @@ async function extractWith(videoId, withCookies) {
       const st = await probe(check.url, check.size);
       if (st !== 200 && st !== 206) { lastError = new ExtractError('BLOCKED', `Server rejected the stream (HTTP ${st}) for client ${client}`); continue; }
     }
+    // formaty >1080p sprawdzamy osobno - jesli serwer ich nie wyda, po prostu ich nie pokazujemy
+    if (hdVideos.length) {
+      const top = [...hdVideos].sort((a, b) => b.height - a.height)[0];
+      const st = await probe(top.url, top.size);
+      if (st !== 200 && st !== 206) hdVideos = [];
+    }
 
     return {
       videoId,
@@ -150,7 +180,7 @@ async function extractWith(videoId, withCookies) {
       duration: info.basic_info.duration || 0,
       thumbnail: bestThumbnail(info),
       client,
-      videos, audios, muxed,
+      videos: [...videos, ...hdVideos], audios, muxed,
       fetchedAt: Date.now(),
     };
   }

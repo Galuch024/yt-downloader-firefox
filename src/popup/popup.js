@@ -91,7 +91,7 @@ async function initCurrent() {
   const settings = await getSettings();
   const sel = $('quality');
   const qualities = videoQualities(info);
-  sel.replaceChildren(...qualities.map((q) => new Option(q.label, q.quality)));
+  sel.replaceChildren(...qualities.map((q) => new Option(q.hiRes ? `${q.label} · ${q.codec}` : q.label, q.quality)));
   const def = qualities.find((q) => Number(q.quality) <= Number(settings.defaultQuality)) || qualities[0];
   if (def) sel.value = def.quality;
   $('dl-mp4').disabled = !qualities.length;

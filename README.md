@@ -1,6 +1,7 @@
 # YouTube Downloader (MP3/MP4) for Firefox
 
-A Firefox extension that downloads audio (MP3 with cover art and tags) and video (MP4 up to 1080p) from YouTube.
+A Firefox extension that downloads audio (MP3 with cover art and tags) and video (MP4 up to 1080p in H.264,
+and 1440p / 4K / 8K in VP9 or AV1) from YouTube.
 It is fully self-contained — no yt-dlp, ffmpeg or any other program is needed: extraction (youtubei.js + BotGuard/PO token),
 stream muxing and MP3 encoding (Mediabunny + LAME compiled to WASM) all run inside the browser.
 
@@ -12,6 +13,27 @@ stream muxing and MP3 encoding (Mediabunny + LAME compiled to WASM) all run insi
 - **Context menu** on a video link or a video page.
 
 Files are saved to your downloads folder, by default in a `YouTube` subfolder (configurable in the extension settings).
+
+## Video quality
+
+| Quality | Video codec | Notes |
+|---|---|---|
+| 144p – 1080p | H.264 + AAC | Plays everywhere: Windows, phones, TVs, video editors. |
+| 1440p, 4K, 8K (*Higher quality MP4*) | VP9 or AV1 + AAC | YouTube does not provide H.264 above 1080p. |
+
+- Streams are never re-encoded: video and audio are copied as-is into one MP4 file, so there is no quality loss.
+- Above 1080p the extension prefers VP9 (better player support, lighter to decode) and uses AV1 only when VP9 is
+  missing (e.g. 8K) or has fewer frames per second. HDR versions are skipped – the SDR version is downloaded.
+- VP9/AV1 files play in Firefox, Chrome, VLC, mpv and most recent phones and TVs. On Windows the built-in player may
+  need the free *VP9 Video Extensions* / *AV1 Video Extension* from the Microsoft Store. Older devices and some video
+  editors may not open them.
+- Shorts and other vertical videos are labelled by the shorter side of the frame (a 1080×1920 Short is 1080p).
+- The original audio track is preferred over dubbed or auto-dubbed tracks.
+
+Large downloads are written to the extension's private storage on disk (OPFS) while downloading and merging,
+so a multi-gigabyte 4K/8K video does not have to fit in memory. Temporary files are deleted when the download
+finishes (and on the next browser start, if it was interrupted). This needs free disk space of roughly twice the
+video size; the extension asks for the *unlimited storage* permission for this reason.
 
 ## Installation
 
@@ -63,7 +85,8 @@ They will not work from a private repository — install new versions manually f
 src/
   page/extractor.js     extraction in the YouTube page context (youtubei.js, BotGuard, Trusted Types)
   content/              player button, Shorts menu item, bridge to the extractor
-  background/           queue, chunked downloading, MP4 muxing, MP3 encoding, saving
+  background/           queue, chunked downloading, MP4 muxing, MP3 encoding, saving,
+                        temporary files on disk (tempfiles.js)
   popup/, options/      user interface
 scripts/build.mjs       esbuild + static file copying
 spike/                  stage 0 prototype (to be removed)

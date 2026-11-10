@@ -158,3 +158,4 @@
 }
 .ytdl-toast.ytdl-toast-show { opacity: 1; transform: translate(-50%, 0); }
 .ytdl-toast.ytdl-toast-error { background: #3b1414; color: #ffb4b4; }
+.ytdl-menu-section-note { color: rgba(255, 255, 255, .4); }

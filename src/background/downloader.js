@@ -1,4 +1,5 @@
 // Pobieranie strumienia googlevideo kawalkami (zakresy po 10 MB, kilka rownolegle, ponawianie).
+// Z opcja temp fragmenty od razu laduja w pliku tymczasowym na dysku (w RAM tylko kilka fragmentow naraz).
 const CHUNK = 10 * 1024 * 1024;
 const PARALLEL = 4;
 const RETRIES = 3;
@@ -19,15 +20,21 @@ async function probeSize(url, signal) {
  * @param {{url: string, size?: number}} format
  * @param {{signal?: AbortSignal, onBytes?: (n: number) => void, refreshUrl?: () => Promise<string>}} opts
  * refreshUrl: wywolywane raz przy 403 (wygasly adres) - zwraca nowy URL tego samego strumienia.
+ * temp: plik z tempfiles.createTempFile - wtedy wynik { blob } to File czytany z dysku.
  */
-export async function downloadStream(format, { signal, onBytes, refreshUrl } = {}) {
+export async function downloadStream(format, { signal, onBytes, refreshUrl, temp } = {}) {
   let url = format.url;
   let refreshed = null;
   const size = format.size || (await probeSize(url, signal));
   const ranges = [];
   for (let s = 0; s < size; s += CHUNK) ranges.push([s, Math.min(s + CHUNK, size) - 1]);
-  const parts = new Array(ranges.length);
+  const parts = temp ? null : new Array(ranges.length);
   let next = 0;
+  let writes = Promise.resolve();
+  const writeAt = (position, data) => {
+    writes = writes.then(() => temp.writable.write({ type: 'write', position, data }));
+    return writes;
+  };
 
   async function fetchRange(i) {
     const [a, b] = ranges[i];
@@ -45,7 +52,7 @@ export async function downloadStream(format, { signal, onBytes, refreshUrl } = {
       if (r.ok) {
         const blob = await r.blob();
         if (blob.size !== b - a + 1) {
-          if (attempt >= RETRIES) throw new Error(`Niepelny fragment (${blob.size}/${b - a + 1} B)`);
+          if (attempt >= RETRIES) throw new Error(`Incomplete chunk (${blob.size}/${b - a + 1} B)`);
           continue;
         }
         return blob;
@@ -64,11 +71,18 @@ export async function downloadStream(format, { signal, onBytes, refreshUrl } = {
   async function worker() {
     while (next < ranges.length) {
       const i = next++;
-      parts[i] = await fetchRange(i);
-      onBytes?.(parts[i].size);
+      const part = await fetchRange(i);
+      if (temp) await writeAt(ranges[i][0], part);
+      else parts[i] = part;
+      onBytes?.(part.size);
     }
   }
   await Promise.all(Array.from({ length: Math.min(PARALLEL, ranges.length) }, worker));
+  if (temp) {
+    await writes;
+    await temp.close();
+    return { blob: await temp.file(), size };
+  }
   return { blob: new Blob(parts, { type: format.mime?.split(';')[0] || 'application/octet-stream' }), size };
 }
 

@@ -2,6 +2,7 @@
 import { downloadStream } from './downloader.js';
 import { muxMp4, toMp3, fetchCover } from './media.js';
 import { extractVideo, extractOnTab, releaseEngineTab } from './engine.js';
+import { opfsAvailable, createTempFile, clearTempFiles } from './tempfiles.js';
 import { pickFormats, sanitizeFilename, videoIdFromUrl, getSettings } from '../shared/util.js';
 
 /** @type {Map<string, any>} */
@@ -83,6 +84,15 @@ async function runJob(job) {
   controllers.set(job.id, ac);
   const { signal } = ac;
   const settings = await getSettings();
+  // pliki tymczasowe na dysku (OPFS) zamiast RAM - konieczne przy 4K/8K; bez OPFS wszystko w pamieci
+  const temps = [];
+  const useDisk = await opfsAvailable();
+  const newTemp = async (label) => {
+    if (!useDisk) return undefined;
+    const t = await createTempFile(`${job.id}-${label}`);
+    temps.push(t);
+    return t;
+  };
   try {
     const { video, audio, muxed } = job.formats;
     const streams = [muxed, video, audio].filter(Boolean);
@@ -107,12 +117,12 @@ async function runJob(job) {
       if (!same) throw new Error('The same stream is no longer available after refreshing');
       return same.url;
     };
-    const dl = (fmt) => downloadStream(fmt, { signal, onBytes, refreshUrl: refreshUrl(fmt) });
+    const dl = async (fmt, label) => downloadStream(fmt, { signal, onBytes, refreshUrl: refreshUrl(fmt), temp: await newTemp(label) });
 
     let output;
     let ext;
     if (job.mode === 'mp3') {
-      const [{ blob: audioBlob }, cover] = await Promise.all([dl(audio), fetchCover(job.videoId)]);
+      const [{ blob: audioBlob }, cover] = await Promise.all([dl(audio, 'a'), fetchCover(job.videoId)]);
       update(job, { state: 'processing', stage: 'Converting to MP3', progress: 0.9 });
       const tags = { title: job.title, artist: job.author, ...(cover ? { images: [{ data: cover, mimeType: 'image/jpeg', kind: 'coverFront' }] } : {}) };
       output = await toMp3(audioBlob, {
@@ -121,13 +131,14 @@ async function runJob(job) {
       });
       ext = 'mp3';
     } else if (muxed) {
-      output = (await dl(muxed)).blob;
+      output = (await dl(muxed, 'm')).blob;
       ext = 'mp4';
     } else {
-      const [{ blob: v }, { blob: a }] = await Promise.all([dl(video), dl(audio)]);
+      const [{ blob: v }, { blob: a }] = await Promise.all([dl(video, 'v'), dl(audio, 'a')]);
       update(job, { state: 'processing', stage: 'Merging video and audio', progress: 0.9 });
       output = await muxMp4(v, a, {
         tags: { title: job.title, artist: job.author }, signal,
+        temp: await newTemp('out'), estimate: { duration: job.info?.duration, fps: video.fps },
         onProgress: (p) => update(job, { progress: 0.9 + p * 0.09 }),
       });
       ext = 'mp4';
@@ -148,6 +159,7 @@ async function runJob(job) {
       notify(job, 'Download failed', `${job.title}: ${e?.message ?? e}`);
     }
   } finally {
+    for (const t of temps) await t.remove();
     controllers.delete(job.id);
     job.formats = null; // zwolnienie adresow; info zostaje do ponowienia
     if (job.engineTab) releaseEngineTab(job.tabId);
@@ -291,6 +303,7 @@ browser.tabs.onRemoved.addListener((tabId) => {
 
 createMenus();
 loadHistory();
+clearTempFiles(); // resztki po zadaniach przerwanych zamknieciem przegladarki
 
 if (__DEV__) {
   fetch(browser.runtime.getURL('autotest.json')).then((r) => (r.ok ? r.json() : null)).then(async (urls) => {
